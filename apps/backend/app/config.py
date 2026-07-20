@@ -14,7 +14,6 @@ class Settings(BaseSettings):
 
     # External APIs (all optional — system degrades gracefully)
     ALPHA_VANTAGE_API_KEY: str = ""
-    NEWSAPI_KEY: str = ""
 
     # App
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]

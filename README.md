@@ -23,57 +23,82 @@ An AI-powered platform for learning stock investment and financial management. B
 | Charts | TradingView Lightweight Charts, Recharts |
 | AI | Claude (via Anthropic API) |
 
-## Quick Start
+## How to Run
 
-### Prerequisites
+### Step 1: Prerequisites
 
-- Python 3.12+
-- Node.js 20+
-- An Anthropic API key ([get one here](https://console.anthropic.com))
+Make sure you have these installed:
 
-### 🚀 One-Click Launch
+| Tool | Minimum Version | Check |
+|------|----------------|-------|
+| Python | 3.12+ | `python --version` |
+| Node.js | 20+ | `node --version` |
 
-**Windows:** Double-click `start.bat`  
-**Mac / Linux:** Run `./start.sh`  
-**Any OS:** Run `pnpm dev` at the project root
+You also need an [Anthropic API key](https://console.anthropic.com) for Claude.
 
-The launcher will:
-1. Check prerequisites (Python, Node.js)
-2. Create `.env` from template if needed (prompts for your API key)
-3. Set up Python virtual environment + install deps
-4. Install frontend dependencies
-5. Start backend (port 8000) + frontend (port 3000)
-6. Open http://localhost:3000 in your browser
-
-**First time only:** Edit `.env` and set `ANTHROPIC_API_KEY=sk-ant-...` before launching.
-
-### Manual Setup
+### Step 2: Set your API key
 
 ```bash
-cd stockwise
-
-# 1. Set your API key
+# Copy the example env file
 cp .env.example .env
-# → Edit .env, paste your ANTHROPIC_API_KEY
+```
 
-# 2. Backend
+Then open `.env` in any text editor and replace the placeholder:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-your-real-key-here   # ← paste your key
+```
+
+That's the only key you need. Leave `ALPHA_VANTAGE_API_KEY` blank — it's optional.
+
+### Step 3: Launch
+
+Pick one:
+
+| Method | Command | Best for |
+|--------|---------|----------|
+| **Windows** | Double-click `start.bat` | One-click, no terminal needed |
+| **Mac / Linux** | `./start.sh` | Single terminal window, Ctrl+C to stop |
+| **Any OS** | `pnpm dev` | If you already have pnpm installed |
+| **Docker** | `docker compose up` | If you prefer containers |
+
+On first run, the launcher automatically:
+- Creates a Python virtual environment (`.venv/`)
+- Installs all Python dependencies
+- Installs all frontend dependencies (`node_modules/`)
+- Starts the backend on **http://localhost:8000**
+- Starts the frontend on **http://localhost:3000**
+- Opens the app in your browser
+
+On subsequent runs it starts instantly — no setup repeated.
+
+### Step 4: Use the app
+
+Open **http://localhost:3000** and you'll see:
+
+| Page | What you can do |
+|------|----------------|
+| **Dashboard** (`/dashboard`) | View popular stocks with live prices |
+| **Stock Detail** (`/dashboard/stock/AAPL`) | Full AI analysis with 4 tabs (Full / Market / Financial / News) |
+| **Chat** (`/dashboard/chat`) | Ask questions, get streaming multi-agent responses |
+| **Learn** (`/dashboard/learn`) | Glossary of 15+ financial terms with plain-English definitions |
+| **Watchlist** (`/dashboard/watchlist`) | Track stocks you're interested in |
+
+### Manual start (if you prefer separate terminals)
+
+```bash
+# Terminal 1 — Backend
 cd apps/backend
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 uvicorn app.main:app --reload --port 8000
 
-# 3. Frontend (new terminal)
+# Terminal 2 — Frontend
 cd apps/frontend
-npm install -g pnpm  # if you don't have pnpm
+npm install -g pnpm              # skip if you have pnpm
 pnpm install
 pnpm dev
-```
-
-### Docker
-
-```bash
-docker compose up
 ```
 
 ## Project Structure
