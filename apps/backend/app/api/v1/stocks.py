@@ -40,19 +40,22 @@ async def get_stock_info(symbol: str):
 async def get_stock_price(symbol: str):
     """Get current price and daily change for a stock."""
     try:
-        info = await YFinanceService.get_stock_info(symbol.upper())
+        fi = await YFinanceService.get_fast_info(symbol.upper())
         return PriceResponse(
             symbol=symbol.upper(),
-            price=info.get("currentPrice") or info.get("regularMarketPrice", 0),
-            change=info.get("regularMarketChange", 0),
-            change_percent=info.get("regularMarketChangePercent", 0),
-            previous_close=info.get("regularMarketPreviousClose", 0),
-            open=info.get("regularMarketOpen", 0),
-            day_high=info.get("regularMarketDayHigh", 0),
-            day_low=info.get("regularMarketDayLow", 0),
-            volume=info.get("regularMarketVolume", 0),
-            fifty_two_week_high=info.get("fiftyTwoWeekHigh", 0),
-            fifty_two_week_low=info.get("fiftyTwoWeekLow", 0),
+            price=fi.get("lastPrice", 0) or fi.get("regularMarketPreviousClose", 0),
+            change=(fi.get("lastPrice", 0) or 0) - (fi.get("regularMarketPreviousClose", 0) or 0),
+            change_percent=(
+                (((fi.get("lastPrice", 0) or 0) - (fi.get("regularMarketPreviousClose", 0) or 0))
+                 / (fi.get("regularMarketPreviousClose", 1) or 1)) * 100
+            ),
+            previous_close=fi.get("regularMarketPreviousClose", 0),
+            open=fi.get("open", 0),
+            day_high=fi.get("dayHigh", 0),
+            day_low=fi.get("dayLow", 0),
+            volume=fi.get("lastVolume", 0),
+            fifty_two_week_high=fi.get("yearHigh", 0),
+            fifty_two_week_low=fi.get("yearLow", 0),
         )
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Could not fetch price for {symbol}: {str(e)}")

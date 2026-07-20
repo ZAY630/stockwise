@@ -3,10 +3,15 @@
 from pydantic_settings import BaseSettings
 
 
+def parse_cors_origins(raw: str) -> list[str]:
+    """Parse comma-separated CORS_ORIGINS string into a list."""
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 class Settings(BaseSettings):
     """StockWise backend settings loaded from environment variables."""
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     # Anthropic
     ANTHROPIC_API_KEY: str
@@ -16,7 +21,7 @@ class Settings(BaseSettings):
     ALPHA_VANTAGE_API_KEY: str = ""
 
     # App
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: str = "http://localhost:3000"
     DATABASE_URL: str = "sqlite+aiosqlite:///./stockwise.db"
     CACHE_TTL_SECONDS: int = 300
 

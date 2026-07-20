@@ -182,9 +182,15 @@ class MultiAgentOrchestrator:
                 messages=[{"role": "user", "content": user_message}],
             )
 
+            text_output = []
             for block in response.content:
                 if block.type == "text":
-                    return block.text
+                    text_output.append(block.text)
+                elif block.type == "thinking":
+                    pass  # Skip thinking blocks in synthesis output
+            result = "".join(text_output)
+            if result:
+                return result
             return "Synthesis completed but no text was generated."
         except Exception as e:
             return f"Synthesis failed: {str(e)}\n\nIndividual agent results are available above."

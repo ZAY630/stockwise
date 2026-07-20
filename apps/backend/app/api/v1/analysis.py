@@ -70,13 +70,13 @@ async def analyze_market(request: AnalysisRequest):
 
 @router.post("/comprehensive", response_model=AnalysisResponse)
 async def analyze_comprehensive(request: AnalysisRequest):
-    """Run all three agents and synthesize a comprehensive analysis."""
+    """Run all three agents in parallel and synthesize a comprehensive analysis."""
     try:
         orchestrator = await get_orchestrator()
         result = await orchestrator.route_and_execute(
             query=request.question or f"Give me a comprehensive analysis of {request.symbol}. Should I invest?",
             symbol=request.symbol.upper(),
-            mode=OrchestrationMode.SEQUENTIAL,
+            mode=OrchestrationMode.PARALLEL,  # Run all 3 agents concurrently (~3x faster)
         )
         return AnalysisResponse(
             symbol=request.symbol.upper(),

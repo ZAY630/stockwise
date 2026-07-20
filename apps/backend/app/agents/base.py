@@ -73,6 +73,9 @@ class BaseAgent:
                 messages=messages,
             )
 
+            # Filter out thinking blocks — APIs reject them in conversation history
+            clean_content = [b for b in response.content if b.type != "thinking" and b.type != "redacted_thinking"]
+
             # Check stop reason
             if response.stop_reason == "end_turn":
                 return self._extract_text(response)
@@ -81,8 +84,8 @@ class BaseAgent:
                 # Collect tool use blocks
                 tool_blocks = [b for b in response.content if b.type == "tool_use"]
 
-                # Add assistant message with tool calls
-                messages.append({"role": "assistant", "content": response.content})
+                # Add assistant message with tool calls (without thinking blocks)
+                messages.append({"role": "assistant", "content": clean_content})
 
                 # Execute tools in parallel
                 tool_results = await self._execute_tools_parallel(tool_blocks)
@@ -181,8 +184,14 @@ class BaseAgent:
 
     @staticmethod
     def _extract_text(response) -> str:
-        """Extract text content from a Claude API response."""
+        """Extract text content from a Claude API response.
+
+        Handles text blocks and skips thinking/redacted_thinking blocks
+        (which contain model reasoning, not the actual response).
+        """
+        text_parts = []
         for block in response.content:
             if block.type == "text":
-                return block.text
-        return ""
+                text_parts.append(block.text)
+            # Skip thinking, redacted_thinking, and tool_use blocks
+        return "".join(text_parts)
