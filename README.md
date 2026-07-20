@@ -29,35 +29,48 @@ An AI-powered platform for learning stock investment and financial management. B
 
 - Python 3.12+
 - Node.js 20+
-- pnpm
-- An Anthropic API key
+- An Anthropic API key ([get one here](https://console.anthropic.com))
 
-### Setup
+### 🚀 One-Click Launch
+
+**Windows:** Double-click `start.bat`  
+**Mac / Linux:** Run `./start.sh`  
+**Any OS:** Run `pnpm dev` at the project root
+
+The launcher will:
+1. Check prerequisites (Python, Node.js)
+2. Create `.env` from template if needed (prompts for your API key)
+3. Set up Python virtual environment + install deps
+4. Install frontend dependencies
+5. Start backend (port 8000) + frontend (port 3000)
+6. Open http://localhost:3000 in your browser
+
+**First time only:** Edit `.env` and set `ANTHROPIC_API_KEY=sk-ant-...` before launching.
+
+### Manual Setup
 
 ```bash
-# Clone and enter the project
 cd stockwise
 
-# Copy environment file and add your API key
+# 1. Set your API key
 cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY
+# → Edit .env, paste your ANTHROPIC_API_KEY
 
-# Backend
+# 2. Backend
 cd apps/backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 uvicorn app.main:app --reload --port 8000
 
-# Frontend (in a new terminal)
+# 3. Frontend (new terminal)
 cd apps/frontend
+npm install -g pnpm  # if you don't have pnpm
 pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000 to use StockWise.
-
-### Docker (alternative)
+### Docker
 
 ```bash
 docker compose up

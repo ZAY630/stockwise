@@ -1,0 +1,16 @@
+{
+  "name": "stockwise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-Powered Stock Investment Learning Platform",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "dev": "node scripts/dev.js",
+    "start": "node scripts/dev.js",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
