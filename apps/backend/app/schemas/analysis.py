@@ -9,6 +9,7 @@ class AnalysisRequest(BaseModel):
     symbol: str = Field(..., min_length=1, max_length=20, description="Stock ticker symbol")
     question: str | None = Field(None, description="Optional specific question")
     market: str | None = Field(None, description="Market code: us or cn")
+    api_key: str | None = Field(None, description="User's own Anthropic API key (never stored on server)")
 
 
 class AnalysisResponse(BaseModel):

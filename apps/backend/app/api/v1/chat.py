@@ -20,7 +20,7 @@ async def chat(request: ChatRequest):
     For complex queries (investment recommendations, etc.), orchestrates multiple agents.
     """
     try:
-        orchestrator = await get_orchestrator()
+        orchestrator = await get_orchestrator(request.api_key)
 
         if request.stream:
             return EventSourceResponse(

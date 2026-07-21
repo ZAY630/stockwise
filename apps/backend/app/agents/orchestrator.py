@@ -199,10 +199,20 @@ class MultiAgentOrchestrator:
 _orchestrator: MultiAgentOrchestrator | None = None
 
 
-async def get_orchestrator() -> MultiAgentOrchestrator:
-    """Get or create the singleton orchestrator instance."""
+async def get_orchestrator(api_key: str | None = None) -> MultiAgentOrchestrator:
+    """Get the orchestrator. Uses client-provided API key if available.
+
+    Each user can provide their own Anthropic API key — no shared billing.
+    The key is NOT stored on the server; it's passed per-request.
+    """
     global _orchestrator
+    effective_key = api_key or settings.ANTHROPIC_API_KEY
+    # Create a fresh client per request if using a user key
+    if api_key:
+        client = AsyncAnthropic(api_key=effective_key)
+        return MultiAgentOrchestrator(client)
+    # Reuse singleton for server key
     if _orchestrator is None:
-        client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        client = AsyncAnthropic(api_key=effective_key)
         _orchestrator = MultiAgentOrchestrator(client)
     return _orchestrator

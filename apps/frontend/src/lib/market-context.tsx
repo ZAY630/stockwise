@@ -173,3 +173,20 @@ export function MarketProvider({ children }: { children: ReactNode }) {
 export function useMarket() {
   return useContext(MarketContext);
 }
+
+// ── User API key (per-user, stored locally, never sent to our server) ──
+
+const API_KEY_STORAGE = "stockwise_user_api_key";
+
+export function getUserApiKey(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(API_KEY_STORAGE);
+}
+
+export function setUserApiKey(key: string) {
+  localStorage.setItem(API_KEY_STORAGE, key);
+}
+
+export function clearUserApiKey() {
+  localStorage.removeItem(API_KEY_STORAGE);
+}
