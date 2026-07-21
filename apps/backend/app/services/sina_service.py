@@ -159,7 +159,7 @@ class SinaFinanceService:
         prices = await SinaFinanceService.get_realtime_prices([sym])
         if sym in prices:
             result = prices[sym]
-            await cache.set(cache_key, result, ttl_seconds=30)
+            await cache.set(cache_key, result, ttl_seconds=300)  # 5 min — match yfinance cache
             return result
 
         raise DataUnavailableError(f"Sina Finance returned no data for {sym}")

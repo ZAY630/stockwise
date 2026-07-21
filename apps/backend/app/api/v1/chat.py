@@ -16,20 +16,32 @@ router = APIRouter()
 async def chat(request: ChatRequest):
     """Send a chat message and get an agent response.
 
-    For simple queries, routes to a single agent.
-    For complex queries (investment recommendations, etc.), orchestrates multiple agents.
+    Includes conversation history so the agent remembers previous exchanges.
     """
     try:
         orchestrator = await get_orchestrator(request.api_key)
 
+        # Build query with conversation history for context
+        query_with_history = request.query
+        if request.history and len(request.history) > 0:
+            history_text = "\n".join(
+                f"[{m.get('role', 'unknown')}]: {m.get('content', '')}"
+                for m in request.history[-10:]  # Last 10 messages
+            )
+            query_with_history = (
+                f"Previous conversation:\n{history_text}\n\n"
+                f"Current question: {request.query}\n\n"
+                f"Please respond to the current question, taking into account the conversation context above."
+            )
+
         if request.stream:
             return EventSourceResponse(
-                _stream_chat_response(orchestrator, request.query, request.symbol)
+                _stream_chat_response(orchestrator, query_with_history, request.symbol)
             )
 
         # Non-streaming response
         result = await orchestrator.route_and_execute(
-            query=request.query,
+            query=query_with_history,
             symbol=request.symbol.upper() if request.symbol else None,
         )
         return {

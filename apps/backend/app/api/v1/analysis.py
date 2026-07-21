@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
+from app.agents.base import AgentContext
 from app.agents.orchestrator import OrchestrationMode, get_orchestrator
 from app.market_config import get_market
 from app.schemas.analysis import AnalysisRequest, AnalysisResponse
@@ -19,12 +20,14 @@ AGENT_LABELS = {
         "financial": "Financial Report Agent",
         "news": "News Analysis Agent",
         "market": "Market Data Agent",
+        "strategy": "Trading Strategy Agent",
         "orchestrator": "StockWise Orchestrator (All Agents)",
     },
     "cn": {
         "financial": "财务分析智能体",
         "news": "新闻分析智能体",
         "market": "市场数据智能体",
+        "strategy": "操作策略智能体",
         "orchestrator": "StockWise 综合分析 (全部智能体)",
     },
 }
@@ -104,6 +107,31 @@ async def analyze_market(request: AnalysisRequest):
             symbol=request.symbol.upper(),
             agent=_labels(request.market)["market"],
             analysis=result["result"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/strategy", response_model=AnalysisResponse)
+async def analyze_strategy(request: AnalysisRequest):
+    """Run all 3 agents, then generate an actionable trading strategy with
+    specific entry/exit prices, position sizing, and risk management."""
+    try:
+        orchestrator = await _get_orch(request.api_key)
+        mkt = get_market(request.market)
+        ctx = AgentContext(
+            symbol=request.symbol.upper(),
+            user_query=_make_query(
+                f"Analyze {request.symbol} and provide a detailed trading strategy. "
+                f"{request.question or 'Give specific buy/sell prices and position sizing.'}",
+                request.market,
+            ),
+        )
+        strategy = await orchestrator.run_strategy(ctx)
+        return AnalysisResponse(
+            symbol=request.symbol.upper(),
+            agent=_labels(request.market).get("strategy", "Trading Strategy Agent"),
+            analysis=strategy,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

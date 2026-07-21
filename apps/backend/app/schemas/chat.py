@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
     symbol: str | None = Field(None, description="Optional stock symbol for context")
     stream: bool = Field(True, description="Whether to stream the response via SSE")
     api_key: str | None = Field(None, description="User's own Anthropic API key (never stored on server)")
+    history: list[dict] | None = Field(None, description="Previous messages for conversation context (role + content)")
 
 
 class ChatMessage(BaseModel):

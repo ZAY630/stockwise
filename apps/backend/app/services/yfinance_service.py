@@ -109,14 +109,37 @@ class YFinanceService:
 
     @staticmethod
     async def get_stock_info(symbol: str) -> dict[str, Any]:
-        """Get comprehensive stock information (name, sector, market cap, etc.)."""
+        """Get comprehensive stock information (name, sector, market cap, etc.).
+
+        For CN A-shares, tries Sina Finance first (real-time), then yfinance, then fallback.
+        """
         sym = symbol.upper()
         cache_key = f"info_{sym}"
         cached = await cache.get(cache_key)
         if cached:
             return cached
 
-        # Try live API
+        # For CN A-shares: try Sina Finance first for real-time price data
+        if _is_cn_a_share(sym):
+            try:
+                from app.services.sina_service import SinaFinanceService
+                sina_price = await SinaFinanceService.get_price(sym)
+                if sina_price and sina_price.get("lastPrice"):
+                    # Merge Sina price into info
+                    fb_info = _get_all_fallback_info().get(sym) or _generate_fallback_info(sym)
+                    fb_info["currentPrice"] = sina_price.get("lastPrice", 0)
+                    fb_info["regularMarketPrice"] = sina_price.get("lastPrice", 0)
+                    fb_info["regularMarketPreviousClose"] = sina_price.get("regularMarketPreviousClose", 0)
+                    fb_info["regularMarketOpen"] = sina_price.get("open", 0)
+                    fb_info["regularMarketDayHigh"] = sina_price.get("dayHigh", 0)
+                    fb_info["regularMarketDayLow"] = sina_price.get("dayLow", 0)
+                    fb_info["regularMarketVolume"] = sina_price.get("lastVolume", 0)
+                    await cache.set(cache_key, fb_info, ttl_seconds=settings.CACHE_TTL_SECONDS)
+                    return fb_info
+            except Exception:
+                pass
+
+        # Try yfinance live API
         try:
             await _rate_limiter.acquire()
             ticker = yf.Ticker(sym)
@@ -231,8 +254,26 @@ class YFinanceService:
 
         # Fallback: generate synthetic history for any CN A-share or known symbol
         if _is_known_symbol(sym) or _is_cn_a_share(sym):
-            fb_price = _get_all_fallback_prices().get(sym) or _generate_fallback_price(sym)
-            base = fb_price.get("lastPrice", 100)
+            # Get base price: try Sina (cached or live), then stored fallback
+            base_price = None
+            if _is_cn_a_share(sym):
+                # Try Sina cache first, then live Sina call
+                sina_cached = await cache.get(f"sina_price_{sym}")
+                if sina_cached and sina_cached.get("lastPrice"):
+                    base_price = sina_cached
+                else:
+                    try:
+                        from app.services.sina_service import SinaFinanceService
+                        live = await asyncio.wait_for(
+                            SinaFinanceService.get_price(sym), timeout=5.0
+                        )
+                        if live and live.get("lastPrice"):
+                            base_price = live
+                    except Exception:
+                        pass
+            if not base_price:
+                base_price = _get_all_fallback_prices().get(sym) or _generate_fallback_price(sym)
+            base = base_price.get("lastPrice", 100)
             data = []
             days = {"1mo": 22, "3mo": 66, "6mo": 132, "1y": 252, "2y": 504, "5y": 1260, "max": 1260}
             n = days.get(period, 252)
@@ -240,11 +281,17 @@ class YFinanceService:
                 d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
                 import random
                 random.seed(f"{sym}{d}")
-                wiggled = base * (1 + random.uniform(-0.15, 0.20))
+                # Random daily change: -3% to +3% (realistic)
+                daily_change = random.uniform(-0.03, 0.03)
+                close_price = base * (1 + random.uniform(-0.15, 0.20))
+                open_price = close_price * (1 - daily_change)
                 data.append({
-                    "date": d, "open": round(wiggled * 0.998, 2),
-                    "high": round(wiggled * 1.01, 2), "low": round(wiggled * 0.99, 2),
-                    "close": round(wiggled, 2), "volume": int(fb_price.get("lastVolume", 10_000_000) * random.uniform(0.5, 1.5)),
+                    "date": d,
+                    "open": round(open_price, 2),
+                    "high": round(max(open_price, close_price) * random.uniform(1.001, 1.015), 2),
+                    "low": round(min(open_price, close_price) * random.uniform(0.985, 0.999), 2),
+                    "close": round(close_price, 2),
+                    "volume": int(base_price.get("lastVolume", 10_000_000) * random.uniform(0.5, 1.5)),
                 })
             await cache.set(cache_key, data, ttl_seconds=300)
             return data

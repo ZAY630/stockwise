@@ -43,7 +43,7 @@ US_MARKET = MarketConfig(
     currency="USD",
     currency_symbol="$",
     locale="en-US",
-    popular_tickers=["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "NVDA"],
+    popular_tickers=["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "NVDA", "META", "NFLX"],
     ticker_names={
         "AAPL": "Apple Inc.",
         "GOOGL": "Alphabet Inc.",
@@ -51,6 +51,8 @@ US_MARKET = MarketConfig(
         "AMZN": "Amazon.com Inc.",
         "TSLA": "Tesla Inc.",
         "NVDA": "NVIDIA Corp.",
+        "META": "Meta Platforms Inc.",
+        "NFLX": "Netflix Inc.",
     },
     indices=["^GSPC", "^IXIC", "^VIX"],
     index_names={
@@ -60,6 +62,12 @@ US_MARKET = MarketConfig(
     },
     language_instruction="Respond in English. Use plain, beginner-friendly English.",
     fallback_prices={
+        "META": {"lastPrice": 625.00, "regularMarketPreviousClose": 620.50, "open": 622.00,
+                 "dayHigh": 630.00, "dayLow": 618.00, "lastVolume": 12000000,
+                 "yearHigh": 680.00, "yearLow": 380.00},
+        "NFLX": {"lastPrice": 980.00, "regularMarketPreviousClose": 975.00, "open": 977.00,
+                 "dayHigh": 990.00, "dayLow": 970.00, "lastVolume": 4500000,
+                 "yearHigh": 1050.00, "yearLow": 580.00},
         "AAPL": {"lastPrice": 228.50, "regularMarketPreviousClose": 226.80, "open": 227.10,
                  "dayHigh": 230.20, "dayLow": 226.50, "lastVolume": 48000000,
                  "yearHigh": 260.10, "yearLow": 164.08},
@@ -80,6 +88,10 @@ US_MARKET = MarketConfig(
                  "yearHigh": 152.89, "yearLow": 60.20},
     },
     fallback_info={
+        "META": {"longName": "Meta Platforms Inc.", "sector": "Communication Services", "industry": "Internet Content & Information",
+                 "marketCap": 1600000000000, "website": "https://www.meta.com"},
+        "NFLX": {"longName": "Netflix Inc.", "sector": "Communication Services", "industry": "Entertainment",
+                 "marketCap": 420000000000, "website": "https://www.netflix.com"},
         "AAPL": {"longName": "Apple Inc.", "sector": "Technology", "industry": "Consumer Electronics",
                  "marketCap": 3500000000000, "website": "https://www.apple.com"},
         "GOOGL": {"longName": "Alphabet Inc.", "sector": "Communication Services", "industry": "Internet Content & Information",
@@ -199,9 +211,9 @@ def normalize_cn_symbol(raw: str) -> str:
 # ── Extended China fallback data (add more tickers) ─────────────────
 
 CN_MARKET.fallback_prices.update({
-    "002497.SZ": {"lastPrice": 12.85, "regularMarketPreviousClose": 12.60, "open": 12.65,
-                  "dayHigh": 13.10, "dayLow": 12.50, "lastVolume": 25000000,
-                  "yearHigh": 18.50, "yearLow": 9.80},
+    "002497.SZ": {"lastPrice": 16.88, "regularMarketPreviousClose": 16.29, "open": 16.00,
+                  "dayHigh": 17.04, "dayLow": 15.87, "lastVolume": 55000000,
+                  "yearHigh": 19.40, "yearLow": 14.30},
     "002594.SZ": {"lastPrice": 285.00, "regularMarketPreviousClose": 282.50, "open": 283.00,
                   "dayHigh": 288.50, "dayLow": 281.00, "lastVolume": 8500000,
                   "yearHigh": 320.00, "yearLow": 220.00},

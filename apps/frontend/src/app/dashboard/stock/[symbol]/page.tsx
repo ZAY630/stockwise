@@ -9,6 +9,7 @@ import {
   Newspaper,
   Sparkles,
   Loader2,
+  Target,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -35,7 +36,7 @@ export default function StockDetailPage() {
   const [priceLoading, setPriceLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<
-    "market" | "financial" | "news" | "comprehensive" | null
+    "market" | "financial" | "news" | "strategy" | "comprehensive" | null
   >(null); // Don't auto-load — wait for user to pick a tab
   const [analysis, setAnalysis] = useState<string>("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -55,7 +56,7 @@ export default function StockDetailPage() {
   }, [ticker]);
 
   // Fetch analysis only when user clicks a tab (not on page load)
-  const loadAnalysis = (tab: "market" | "financial" | "news" | "comprehensive") => {
+  const loadAnalysis = (tab: "market" | "financial" | "news" | "strategy" | "comprehensive") => {
     setActiveTab(tab);
     if (loadedTabs.has(tab)) return; // Already loaded — cached in state
     setLoadedTabs((prev) => new Set(prev).add(tab));
@@ -67,6 +68,7 @@ export default function StockDetailPage() {
       tab === "market" ? "/analysis/market" :
       tab === "financial" ? "/analysis/financial" :
       tab === "news" ? "/analysis/news" :
+      tab === "strategy" ? "/analysis/strategy" :
       "/analysis/comprehensive";
 
     apiPost<AnalysisResponse>(endpoint, {
@@ -142,6 +144,7 @@ export default function StockDetailPage() {
       <div className="mb-8 flex gap-2 border-b border-gray-800">
         {[
           { key: "comprehensive", label: t.full_analysis, icon: Sparkles },
+          { key: "strategy", label: market === "cn" ? "操作策略" : "Strategy", icon: Target },
           { key: "market", label: t.market_data_tab, icon: TrendingUp },
           { key: "financial", label: t.financials_tab, icon: BarChart3 },
           { key: "news", label: t.news_tab, icon: Newspaper },

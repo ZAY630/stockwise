@@ -63,15 +63,18 @@ class BaseAgent:
             {"role": "user", "content": self._build_user_message(context)}
         ]
 
-        max_turns = 6  # Enough for complex multi-tool analysis, safe against infinite loops
+        max_turns = 10  # Enough for complex multi-round analysis with partial tool results
         for _ in range(max_turns):
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=16000,
-                system=self.system_prompt,
-                tools=self.tools,
-                messages=messages,
-            )
+            kwargs: dict[str, Any] = {
+                "model": self.model,
+                "max_tokens": 16000,
+                "system": self.system_prompt,
+                "messages": messages,
+            }
+            if self.tools:  # Only include tools if there are any
+                kwargs["tools"] = self.tools
+
+            response = await self.client.messages.create(**kwargs)
 
             # Filter out thinking blocks — APIs reject them in conversation history
             clean_content = [b for b in response.content if b.type != "thinking" and b.type != "redacted_thinking"]

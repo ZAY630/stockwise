@@ -103,9 +103,16 @@ export default function ChatPage() {
     streamingAgentRef.current = "";
 
     try {
+      // Send last 10 messages as conversation history
+      const history = messages.slice(-10).map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.content,
+      }));
+
       const stream = await createSSERequest("/chat", {
         query,
         stream: true,
+        history,
       });
 
       const reader = stream.getReader();

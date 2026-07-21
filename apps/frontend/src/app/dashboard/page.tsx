@@ -19,8 +19,8 @@ import type { PriceData, SearchResult } from "@/types/common";
 // Recommended stocks for each market with brief reasons
 const RECOMMENDED: Record<string, { symbol: string; reason: string }[]> = {
   us: [
-    { symbol: "AAPL", reason: "Strong AI-driven upgrade cycle" },
     { symbol: "NVDA", reason: "Dominant AI chip position" },
+    { symbol: "META", reason: "AI + social media growth momentum" },
   ],
   cn: [
     { symbol: "300750.SZ", reason: "动力电池龙头·新能源赛道" },

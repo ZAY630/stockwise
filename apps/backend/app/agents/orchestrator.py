@@ -17,6 +17,7 @@ from app.agents.base import AgentContext
 from app.agents.financial_agent import FinancialReportAgent
 from app.agents.market_agent import MarketDataAgent
 from app.agents.news_agent import NewsAnalysisAgent
+from app.agents.strategy_agent import StrategyAgent
 from app.agents.prompts import ORCHESTRATOR_SYNTHESIS_PROMPT
 from app.config import settings
 
@@ -38,6 +39,7 @@ class MultiAgentOrchestrator:
         self.financial = FinancialReportAgent(client)
         self.news = NewsAnalysisAgent(client)
         self.market = MarketDataAgent(client)
+        self.strategy = StrategyAgent(client)
 
     async def route_and_execute(
         self,
@@ -106,6 +108,22 @@ class MultiAgentOrchestrator:
         # Cache for 10 minutes
         _analysis_cache[cache_key] = (now + 600, result)
         return result
+
+    async def run_strategy(self, ctx: AgentContext) -> str:
+        """Run all 3 analysis agents in parallel, then generate a trading strategy.
+
+        The Strategy Agent receives the full output and produces actionable
+        trading advice with specific entry/exit prices and position sizing.
+        """
+        results = await asyncio.gather(
+            self.financial.analyze(ctx),
+            self.news.analyze(ctx),
+            self.market.analyze(ctx),
+        )
+        ctx.financial_summary = results[0]
+        ctx.news_sentiment = results[1]
+        ctx.market_data = results[2]
+        return await self.strategy.analyze(ctx)
 
     def _classify_query(self, query: str) -> OrchestrationMode:
         """Classify whether a query needs a single agent or multi-agent analysis."""
