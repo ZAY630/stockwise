@@ -7,6 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_v1_router
 from app.config import parse_cors_origins, settings
+
+# In production, allow all origins (frontend on Vercel, backend on Render)
+if settings.ENVIRONMENT == "production":
+    CORS_ALLOWED = ["*"]
+else:
+    CORS_ALLOWED = parse_cors_origins(settings.CORS_ORIGINS)
 from app.middleware.error_handler import register_exception_handlers
 
 
@@ -30,7 +36,7 @@ def create_app() -> FastAPI:
     # CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=parse_cors_origins(settings.CORS_ORIGINS),
+        allow_origins=CORS_ALLOWED,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

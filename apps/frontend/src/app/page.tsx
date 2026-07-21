@@ -1,157 +1,114 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  TrendingUp,
-  BarChart3,
-  Newspaper,
-  Sparkles,
-  ArrowRight,
-  Search,
-} from "lucide-react";
+import { TrendingUp, ChevronRight } from "lucide-react";
+import { useMarket, type MarketCode } from "@/lib/market-context";
 
 export default function LandingPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { market, setMarket, t } = useMarket();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/dashboard/stock/${searchQuery.trim().toUpperCase()}`);
-    }
+  const handleEnter = () => {
+    router.push("/dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Hero */}
-      <header className="relative overflow-hidden border-b border-gray-800">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-gray-950 to-emerald-900/20" />
-        <div className="relative mx-auto max-w-6xl px-6 py-24 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm text-blue-300">
-            <Sparkles className="h-4 w-4" />
-            Powered by Multi-Agent AI
-          </div>
-          <h1 className="mb-6 text-5xl font-bold tracking-tight md:text-7xl">
-            <span className="bg-gradient-to-r from-blue-400 via-white to-emerald-400 bg-clip-text text-transparent">
-              StockWise
-            </span>
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-gray-400">
-            Learn stock investment with AI agents that analyze financials, news,
-            and market data. Built for beginners — every term explained, every
-            recommendation reasoned.
-          </p>
-
-          {/* Search */}
-          <form onSubmit={handleSearch} className="mx-auto max-w-xl">
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Enter a stock ticker (e.g., AAPL, TSLA)..."
-                  className="w-full rounded-xl border border-gray-700 bg-gray-800/50 py-4 pl-12 pr-4 text-lg text-white placeholder-gray-500 backdrop-blur transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-xl bg-blue-600 px-8 py-4 font-semibold text-white transition hover:bg-blue-500"
-              >
-                Analyze
-              </button>
-            </div>
-          </form>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-6">
+      {/* Logo */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
+          <TrendingUp className="h-7 w-7 text-white" />
         </div>
-      </header>
+        <h1 className="text-4xl font-bold text-white">StockWise</h1>
+      </div>
+      <p className="mb-4 text-lg text-gray-400">
+        {market === "cn" ? "AI驱动的股票投资学习助手" : "AI-Powered Stock Investment Learning"}
+      </p>
+      <p className="mb-12 max-w-md text-center text-sm text-gray-600">
+        {market === "cn"
+          ? "选择市场，AI智能体帮您分析股票财务、新闻和技术指标"
+          : "Select your market. AI agents analyze financials, news, and technical indicators — all in plain language."
+        }
+      </p>
 
-      {/* Features */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <h2 className="mb-16 text-center text-3xl font-bold">
-          Three AI Agents, One Complete Picture
-        </h2>
-        <div className="grid gap-8 md:grid-cols-3">
-          <FeatureCard
-            icon={<Newspaper className="h-8 w-8" />}
-            title="News Analysis Agent"
-            description="Fetches financial news, analyzes sentiment, and explains how headlines might impact stock prices — with full reasoning chains."
-            color="purple"
-          />
-          <FeatureCard
-            icon={<BarChart3 className="h-8 w-8" />}
-            title="Financial Report Agent"
-            description="Analyzes balance sheets, income statements, and SEC filings. Explains P/E ratios, ROE, and more in plain English with helpful analogies."
-            color="blue"
-          />
-          <FeatureCard
-            icon={<TrendingUp className="h-8 w-8" />}
-            title="Market Data Agent"
-            description="Reads charts, computes RSI/MACD/Bollinger Bands, and generates buy/sell/hold recommendations with specific price levels."
-            color="emerald"
-          />
-        </div>
-      </section>
+      {/* Market selection cards */}
+      <div className="mb-10 grid gap-5 sm:grid-cols-2 w-full max-w-xl">
+        <MarketCard
+          flag="🇺🇸"
+          title="US Market"
+          subtitle="美股市场"
+          tickers="AAPL · GOOGL · NVDA · TSLA · MSFT"
+          currency="USD · $"
+          active={market === "us"}
+          onClick={() => setMarket("us")}
+        />
+        <MarketCard
+          flag="🇨🇳"
+          title="中国A股"
+          subtitle="China A-Share Market"
+          tickers="茅台 · 比亚迪 · 宁德时代 · 五粮液"
+          currency="CNY · ¥"
+          active={market === "cn"}
+          onClick={() => setMarket("cn")}
+        />
+      </div>
 
       {/* CTA */}
-      <section className="border-t border-gray-800">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <h2 className="mb-4 text-3xl font-bold">Ready to learn investing?</h2>
-          <p className="mb-8 text-gray-400">
-            No jargon. No confusion. Just clear, educational analysis powered by
-            AI.
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-4 font-semibold text-white transition hover:bg-blue-500"
-          >
-            Open Dashboard <ArrowRight className="h-5 w-5" />
-          </button>
-        </div>
-      </section>
+      <button
+        onClick={handleEnter}
+        className="group flex items-center gap-2 rounded-xl bg-blue-600 px-10 py-4 text-lg font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500 hover:shadow-blue-500/30"
+      >
+        {market === "cn" ? "进入仪表盘" : "Enter Dashboard"}
+        <ChevronRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
+      </button>
+
+      <p className="mt-6 text-xs text-gray-700">
+        ⚠️ {market === "cn"
+          ? "仅供教育参考，不构成投资建议"
+          : "For educational purposes only. Not financial advice."}
+      </p>
     </div>
   );
 }
 
-function FeatureCard({
-  icon,
+function MarketCard({
+  flag,
   title,
-  description,
-  color,
+  subtitle,
+  tickers,
+  currency,
+  active,
+  onClick,
 }: {
-  icon: React.ReactNode;
+  flag: string;
   title: string;
-  description: string;
-  color: "blue" | "purple" | "emerald";
+  subtitle: string;
+  tickers: string;
+  currency: string;
+  active: boolean;
+  onClick: () => void;
 }) {
-  const borders = {
-    blue: "border-blue-500/30 hover:border-blue-500/60",
-    purple: "border-purple-500/30 hover:border-purple-500/60",
-    emerald: "border-emerald-500/30 hover:border-emerald-500/60",
-  };
-  const bgs = {
-    blue: "bg-blue-500/10",
-    purple: "bg-purple-500/10",
-    emerald: "bg-emerald-500/10",
-  };
-  const texts = {
-    blue: "text-blue-400",
-    purple: "text-purple-400",
-    emerald: "text-emerald-400",
-  };
-
   return (
-    <div
-      className={`rounded-2xl border ${borders[color]} bg-gray-800/30 p-8 backdrop-blur transition`}
+    <button
+      onClick={onClick}
+      className={`rounded-2xl border-2 p-6 text-left transition ${
+        active
+          ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10"
+          : "border-gray-700 bg-gray-900/50 hover:border-gray-500"
+      }`}
     >
-      <div
-        className={`mb-4 inline-flex rounded-xl ${bgs[color]} p-3 ${texts[color]}`}
-      >
-        {icon}
-      </div>
-      <h3 className="mb-3 text-xl font-semibold">{title}</h3>
-      <p className="text-gray-400">{description}</p>
-    </div>
+      <div className="mb-3 text-4xl">{flag}</div>
+      <h3 className={`mb-1 text-lg font-bold ${active ? "text-blue-400" : "text-white"}`}>
+        {title}
+      </h3>
+      <p className="mb-3 text-xs text-gray-500">{subtitle}</p>
+      <p className="mb-2 text-xs text-gray-400">{tickers}</p>
+      <p className="text-xs text-gray-600">{currency}</p>
+      {active && (
+        <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-blue-600/20 px-3 py-1 text-xs font-medium text-blue-400">
+          ✓ {title === "US Market" ? "Selected" : "已选择"}
+        </div>
+      )}
+    </button>
   );
 }

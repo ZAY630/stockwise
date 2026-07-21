@@ -11,7 +11,7 @@ Each tool maps to an implementation in app/tools/.
 FINANCIAL_AGENT_TOOLS = [
     {
         "name": "get_financial_statements",
-        "description": "Fetch income statement, balance sheet, and cash flow statement for a company. Returns key line items from the most recent filings.",
+        "description": "Fetch income statement, balance sheet, and cash flow statement for a company. Works for both US stocks (AAPL) and Chinese A-shares (600519.SS, 000858.SZ).",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -86,7 +86,7 @@ FINANCIAL_AGENT_TOOLS = [
 NEWS_AGENT_TOOLS = [
     {
         "name": "fetch_stock_news",
-        "description": "Fetch recent news articles related to a specific stock. Returns headlines, summaries, sources, and publication dates.",
+        "description": "Fetch recent news articles for a stock. Works for US stocks (AAPL, TSLA) and Chinese A-shares (600519, 002497). Returns headlines, summaries, sources, and publication dates.",
         "input_schema": {
             "type": "object",
             "properties": {

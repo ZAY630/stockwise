@@ -1,0 +1,22 @@
+# Render Blueprint — one-click deploy for the backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: stockwise-backend
+    runtime: python
+    region: singapore  # closer to China for Sina Finance
+    plan: free
+    buildCommand: cd apps/backend && pip install -e ".[dev]"
+    startCommand: cd apps/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: CACHE_TTL_SECONDS
+        value: "300"

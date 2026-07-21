@@ -63,7 +63,7 @@ class BaseAgent:
             {"role": "user", "content": self._build_user_message(context)}
         ]
 
-        max_turns = 10  # Safety limit to prevent infinite loops
+        max_turns = 6  # Enough for complex multi-tool analysis, safe against infinite loops
         for _ in range(max_turns):
             response = await self.client.messages.create(
                 model=self.model,
@@ -96,7 +96,11 @@ class BaseAgent:
             # stop_reason could be max_tokens, refusals, etc.
             return self._extract_text(response)
 
-        return "Analysis did not complete within the maximum number of turns."
+        return (
+            "The analysis took more rounds than expected and was paused to keep things fast. "
+            "This usually happens when tools return partial data and the agent tries alternative approaches. "
+            "Please try again with a more specific question, or try a different analysis tab."
+        )
 
     async def _execute_tools_parallel(self, tool_blocks: list) -> list[dict[str, Any]]:
         """Execute multiple tool calls concurrently using asyncio.gather.

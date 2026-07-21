@@ -30,3 +30,23 @@ body {
   background-color: rgb(var(--background));
   color: rgb(var(--foreground));
 }
+
+/* ── Markdown content styling ── */
+.markdown-content table {
+  border-collapse: collapse;
+}
+.markdown-content th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+.markdown-content th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+.markdown-content tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+.markdown-content tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+.markdown-content tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}

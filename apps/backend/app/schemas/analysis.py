@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 class AnalysisRequest(BaseModel):
     """Request to run an agent analysis."""
 
-    symbol: str = Field(..., min_length=1, max_length=10, description="Stock ticker symbol")
+    symbol: str = Field(..., min_length=1, max_length=20, description="Stock ticker symbol")
     question: str | None = Field(None, description="Optional specific question")
+    market: str | None = Field(None, description="Market code: us or cn")
 
 
 class AnalysisResponse(BaseModel):

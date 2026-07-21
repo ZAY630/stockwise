@@ -8,14 +8,9 @@ import {
   MessageSquare,
   BookOpen,
   TrendingUp,
+  ArrowLeft,
 } from "lucide-react";
-
-const navItems = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/watchlist", label: "Watchlist", icon: List },
-  { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
-  { href: "/dashboard/learn", label: "Learn", icon: BookOpen },
-];
+import { useMarket } from "@/lib/market-context";
 
 export default function DashboardLayout({
   children,
@@ -23,6 +18,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { t, market, currencySymbol } = useMarket();
+
+  const navItems = [
+    { href: "/dashboard", label: t.overview, icon: LayoutDashboard },
+    { href: "/dashboard/watchlist", label: t.watchlist, icon: List },
+    { href: "/dashboard/chat", label: t.chat, icon: MessageSquare },
+    { href: "/dashboard/learn", label: t.learn, icon: BookOpen },
+  ];
 
   return (
     <div className="flex h-screen">
@@ -67,7 +70,25 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-gray-950">{children}</main>
+      <main className="flex-1 overflow-y-auto bg-gray-950">
+        {/* Top bar: back button + market indicator */}
+        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-gray-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {market === "cn" ? "返回首页" : "Back to Home"}
+          </Link>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>{market === "cn" ? "🇨🇳" : "🇺🇸"}</span>
+            <span>
+              {market === "cn" ? "中国A股" : "US Market"} · {currencySymbol}
+            </span>
+          </div>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }

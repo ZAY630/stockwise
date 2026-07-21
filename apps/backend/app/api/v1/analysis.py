@@ -3,9 +3,36 @@
 from fastapi import APIRouter, HTTPException
 
 from app.agents.orchestrator import OrchestrationMode, get_orchestrator
+from app.market_config import get_market
 from app.schemas.analysis import AnalysisRequest, AnalysisResponse
 
 router = APIRouter()
+
+# Agent name translations per market
+AGENT_LABELS = {
+    "us": {
+        "financial": "Financial Report Agent",
+        "news": "News Analysis Agent",
+        "market": "Market Data Agent",
+        "orchestrator": "StockWise Orchestrator (All Agents)",
+    },
+    "cn": {
+        "financial": "财务分析智能体",
+        "news": "新闻分析智能体",
+        "market": "市场数据智能体",
+        "orchestrator": "StockWise 综合分析 (全部智能体)",
+    },
+}
+
+
+def _make_query(base_query: str, market_code: str | None) -> str:
+    """Append market language instruction to the query."""
+    mkt = get_market(market_code)
+    return f"{mkt.language_instruction}\n\n{base_query}"
+
+
+def _labels(market_code: str | None):
+    return AGENT_LABELS.get(market_code or "us", AGENT_LABELS["us"])
 
 
 @router.post("/financial", response_model=AnalysisResponse)
@@ -14,14 +41,17 @@ async def analyze_financials(request: AnalysisRequest):
     try:
         orchestrator = await get_orchestrator()
         result = await orchestrator.route_and_execute(
-            query=f"Analyze the financial health of {request.symbol}. {request.question or ''}",
+            query=_make_query(
+                f"Analyze the financial health of {request.symbol}. {request.question or ''}",
+                request.market,
+            ),
             symbol=request.symbol.upper(),
             mode=OrchestrationMode.SINGLE,
             force_agent="financial",
         )
         return AnalysisResponse(
             symbol=request.symbol.upper(),
-            agent="Financial Report Agent",
+            agent=_labels(request.market)["financial"],
             analysis=result["result"],
         )
     except Exception as e:
@@ -34,14 +64,17 @@ async def analyze_news(request: AnalysisRequest):
     try:
         orchestrator = await get_orchestrator()
         result = await orchestrator.route_and_execute(
-            query=f"Analyze recent news and sentiment for {request.symbol}. {request.question or ''}",
+            query=_make_query(
+                f"Analyze recent news and sentiment for {request.symbol}. {request.question or ''}",
+                request.market,
+            ),
             symbol=request.symbol.upper(),
             mode=OrchestrationMode.SINGLE,
             force_agent="news",
         )
         return AnalysisResponse(
             symbol=request.symbol.upper(),
-            agent="News Analysis Agent",
+            agent=_labels(request.market)["news"],
             analysis=result["result"],
         )
     except Exception as e:
@@ -54,14 +87,17 @@ async def analyze_market(request: AnalysisRequest):
     try:
         orchestrator = await get_orchestrator()
         result = await orchestrator.route_and_execute(
-            query=f"Analyze the market data and technical indicators for {request.symbol}. {request.question or ''}",
+            query=_make_query(
+                f"Analyze the market data and technical indicators for {request.symbol}. {request.question or ''}",
+                request.market,
+            ),
             symbol=request.symbol.upper(),
             mode=OrchestrationMode.SINGLE,
             force_agent="market",
         )
         return AnalysisResponse(
             symbol=request.symbol.upper(),
-            agent="Market Data Agent",
+            agent=_labels(request.market)["market"],
             analysis=result["result"],
         )
     except Exception as e:
@@ -74,13 +110,16 @@ async def analyze_comprehensive(request: AnalysisRequest):
     try:
         orchestrator = await get_orchestrator()
         result = await orchestrator.route_and_execute(
-            query=request.question or f"Give me a comprehensive analysis of {request.symbol}. Should I invest?",
+            query=_make_query(
+                request.question or f"Give me a comprehensive analysis of {request.symbol}. Should I invest?",
+                request.market,
+            ),
             symbol=request.symbol.upper(),
-            mode=OrchestrationMode.PARALLEL,  # Run all 3 agents concurrently (~3x faster)
+            mode=OrchestrationMode.PARALLEL,
         )
         return AnalysisResponse(
             symbol=request.symbol.upper(),
-            agent="StockWise Orchestrator (All Agents)",
+            agent=_labels(request.market)["orchestrator"],
             analysis=result.get("synthesis", str(result)),
         )
     except Exception as e:

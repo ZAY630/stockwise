@@ -2,10 +2,16 @@
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.market_config import normalize_cn_symbol
 from app.schemas.stock import PriceResponse, SearchResult, StockInfoResponse
 from app.services.yfinance_service import YFinanceService
 
 router = APIRouter()
+
+
+def _normalize(symbol: str) -> str:
+    """Normalize symbol — auto-detect CN exchange suffix if needed."""
+    return normalize_cn_symbol(symbol)
 
 
 @router.get("/search", response_model=list[SearchResult])
@@ -22,9 +28,9 @@ async def search_stocks(q: str = Query(..., min_length=1, description="Search qu
 async def get_stock_info(symbol: str):
     """Get comprehensive information about a stock."""
     try:
-        info = await YFinanceService.get_stock_info(symbol.upper())
+        info = await YFinanceService.get_stock_info(_normalize(symbol))
         return StockInfoResponse(
-            symbol=symbol.upper(),
+            symbol=_normalize(symbol),
             name=info.get("longName", ""),
             sector=info.get("sector", ""),
             industry=info.get("industry", ""),
@@ -40,9 +46,9 @@ async def get_stock_info(symbol: str):
 async def get_stock_price(symbol: str):
     """Get current price and daily change for a stock."""
     try:
-        fi = await YFinanceService.get_fast_info(symbol.upper())
+        fi = await YFinanceService.get_fast_info(_normalize(symbol))
         return PriceResponse(
-            symbol=symbol.upper(),
+            symbol=_normalize(symbol),
             price=fi.get("lastPrice", 0) or fi.get("regularMarketPreviousClose", 0),
             change=(fi.get("lastPrice", 0) or 0) - (fi.get("regularMarketPreviousClose", 0) or 0),
             change_percent=(
@@ -70,8 +76,8 @@ async def get_stock_history(
     """Get historical OHLCV data for charting."""
     try:
         data = await YFinanceService.get_historical_data(
-            symbol.upper(), period=period, interval=interval
+            _normalize(symbol), period=period, interval=interval
         )
-        return {"symbol": symbol.upper(), "period": period, "interval": interval, "data": data}
+        return {"symbol": _normalize(symbol), "period": period, "interval": interval, "data": data}
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Could not fetch history for {symbol}: {str(e)}")

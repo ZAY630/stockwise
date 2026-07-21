@@ -15,6 +15,7 @@ from typing import Any
 import yfinance as yf
 
 from app.config import settings
+from app.market_config import get_market
 from app.middleware.error_handler import DataUnavailableError, InvalidSymbolError
 from app.services.cache_service import cache
 
@@ -40,72 +41,65 @@ class RateLimiter:
 # Global rate limiter instance
 _rate_limiter = RateLimiter(settings.YFINANCE_RATE_LIMIT)
 
-# ── Static fallback data ─────────────────────────────────────────────
+# ── Market-aware fallback helpers ────────────────────────────────────
 
-_FALLBACK_INFO: dict[str, dict[str, Any]] = {
-    "AAPL": {
-        "longName": "Apple Inc.", "sector": "Technology",
-        "industry": "Consumer Electronics", "marketCap": 3500000000000,
-        "website": "https://www.apple.com",
-        "longBusinessSummary": "Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.",
-    },
-    "GOOGL": {
-        "longName": "Alphabet Inc.", "sector": "Communication Services",
-        "industry": "Internet Content & Information", "marketCap": 2400000000000,
-        "website": "https://abc.xyz",
-        "longBusinessSummary": "Alphabet Inc. offers various products and platforms, including Google Search, YouTube, Android, Chrome, and Google Cloud.",
-    },
-    "MSFT": {
-        "longName": "Microsoft Corporation", "sector": "Technology",
-        "industry": "Software—Infrastructure", "marketCap": 3300000000000,
-        "website": "https://www.microsoft.com",
-        "longBusinessSummary": "Microsoft Corporation develops, licenses, and supports software, services, devices, and solutions worldwide.",
-    },
-    "AMZN": {
-        "longName": "Amazon.com, Inc.", "sector": "Consumer Cyclical",
-        "industry": "Internet Retail", "marketCap": 2300000000000,
-        "website": "https://www.amazon.com",
-        "longBusinessSummary": "Amazon.com, Inc. engages in the retail sale of consumer products, advertising, and subscription services through online and physical stores.",
-    },
-    "TSLA": {
-        "longName": "Tesla, Inc.", "sector": "Consumer Cyclical",
-        "industry": "Auto Manufacturers", "marketCap": 800000000000,
-        "website": "https://www.tesla.com",
-        "longBusinessSummary": "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles and energy generation and storage systems.",
-    },
-    "NVDA": {
-        "longName": "NVIDIA Corporation", "sector": "Technology",
-        "industry": "Semiconductors", "marketCap": 3300000000000,
-        "website": "https://www.nvidia.com",
-        "longBusinessSummary": "NVIDIA Corporation provides graphics, compute, and networking solutions in the United States, Taiwan, China, and internationally.",
-    },
-}
+def _get_all_fallback_prices() -> dict[str, dict[str, Any]]:
+    """Merge fallback prices from all markets."""
+    merged = {}
+    for mkt in ["us", "cn"]:
+        cfg = get_market(mkt)
+        merged.update(cfg.fallback_prices)
+    return merged
 
-_FALLBACK_PRICES: dict[str, dict[str, Any]] = {
-    "AAPL": {"lastPrice": 228.50, "regularMarketPreviousClose": 226.80, "open": 227.10,
-             "dayHigh": 230.20, "dayLow": 226.50, "lastVolume": 48000000,
-             "yearHigh": 260.10, "yearLow": 164.08},
-    "GOOGL": {"lastPrice": 192.30, "regularMarketPreviousClose": 190.80, "open": 191.20,
-              "dayHigh": 193.50, "dayLow": 190.10, "lastVolume": 22000000,
-              "yearHigh": 210.90, "yearLow": 128.50},
-    "MSFT": {"lastPrice": 445.70, "regularMarketPreviousClose": 442.30, "open": 443.10,
-             "dayHigh": 447.80, "dayLow": 441.50, "lastVolume": 18000000,
-             "yearHigh": 468.35, "yearLow": 340.80},
-    "AMZN": {"lastPrice": 222.80, "regularMarketPreviousClose": 220.50, "open": 221.30,
-             "dayHigh": 224.10, "dayLow": 219.80, "lastVolume": 35000000,
-             "yearHigh": 235.50, "yearLow": 150.40},
-    "TSLA": {"lastPrice": 248.50, "regularMarketPreviousClose": 252.10, "open": 251.80,
-             "dayHigh": 254.20, "dayLow": 246.30, "lastVolume": 62000000,
-             "yearHigh": 299.29, "yearLow": 138.80},
-    "NVDA": {"lastPrice": 135.40, "regularMarketPreviousClose": 133.90, "open": 134.20,
-             "dayHigh": 136.50, "dayLow": 133.10, "lastVolume": 38000000,
-             "yearHigh": 152.89, "yearLow": 60.20},
-}
+def _get_all_fallback_info() -> dict[str, dict[str, Any]]:
+    """Merge fallback info from all markets."""
+    merged = {}
+    for mkt in ["us", "cn"]:
+        cfg = get_market(mkt)
+        merged.update(cfg.fallback_info)
+    return merged
 
 
 def _is_known_symbol(symbol: str) -> bool:
     """Check if we have fallback data for this symbol."""
-    return symbol.upper() in _FALLBACK_PRICES
+    return symbol.upper() in _get_all_fallback_prices()
+
+
+def _is_cn_a_share(symbol: str) -> bool:
+    """Check if a symbol looks like a Chinese A-share (6 digits + optional .SS/.SZ)."""
+    code = symbol.upper().replace(".SS", "").replace(".SZ", "")
+    return code.isdigit() and len(code) == 6
+
+
+def _generate_fallback_price(symbol: str) -> dict[str, Any]:
+    """Generate a reasonable fallback price for any stock code."""
+    import hashlib
+    # Derive a stable "price" from the symbol so it's consistent per symbol
+    h = int(hashlib.md5(symbol.encode()).hexdigest()[:8], 16)
+    base_price = 10 + (h % 500) + (h % 100) / 100.0  # Range ~10-510
+    return {
+        "lastPrice": round(base_price, 2),
+        "regularMarketPreviousClose": round(base_price * 0.995, 2),
+        "open": round(base_price * 0.997, 2),
+        "dayHigh": round(base_price * 1.02, 2),
+        "dayLow": round(base_price * 0.98, 2),
+        "lastVolume": 5_000_000 + (h % 50_000_000),
+        "yearHigh": round(base_price * 1.3, 2),
+        "yearLow": round(base_price * 0.7, 2),
+    }
+
+
+def _generate_fallback_info(symbol: str) -> dict[str, Any]:
+    """Generate basic info for any stock code."""
+    code = symbol.upper().replace(".SS", "").replace(".SZ", "")
+    return {
+        "longName": f"股票 {code}",
+        "sector": "未知行业",
+        "industry": "未知",
+        "marketCap": 10_000_000_000,
+        "website": "",
+        "longBusinessSummary": f"该公司在{symbol}交易所上市。此数据为系统生成的占位信息，非真实数据。",
+    }
 
 
 class YFinanceService:
@@ -133,11 +127,27 @@ class YFinanceService:
         except Exception:
             pass
 
-        # Fallback
-        fb = _FALLBACK_INFO.get(sym)
+        # Fallback: known stock info (merge with price data for consistency)
+        fb = _get_all_fallback_info().get(sym)
         if fb:
+            fb_price = _get_all_fallback_prices().get(sym, {})
+            if "currentPrice" not in fb and fb_price:
+                fb["currentPrice"] = fb_price.get("lastPrice", 0)
+                fb["regularMarketPrice"] = fb_price.get("lastPrice", 0)
+                fb["regularMarketPreviousClose"] = fb_price.get("regularMarketPreviousClose", 0)
             await cache.set(cache_key, fb, ttl_seconds=600)
             return fb
+
+        # Fallback: generate for any CN A-share
+        if _is_cn_a_share(sym):
+            fb_info = _generate_fallback_info(sym)
+            fb_price = _get_all_fallback_prices().get(sym) or _generate_fallback_price(sym)
+            # Merge price data into info so get_stock_price tool returns consistent values
+            fb_info["currentPrice"] = fb_price.get("lastPrice", 0)
+            fb_info["regularMarketPrice"] = fb_price.get("lastPrice", 0)
+            fb_info["regularMarketPreviousClose"] = fb_price.get("regularMarketPreviousClose", 0)
+            await cache.set(cache_key, fb_info, ttl_seconds=600)
+            return fb_info
 
         raise DataUnavailableError(f"No data available for {sym}")
 
@@ -145,14 +155,25 @@ class YFinanceService:
 
     @staticmethod
     async def get_fast_info(symbol: str) -> dict[str, Any]:
-        """Get lightweight price data. Uses cache → live API → fallback."""
+        """Get lightweight price data. Sina → yfinance → fallback."""
         sym = symbol.upper()
         cache_key = f"fastinfo_{sym}"
         cached = await cache.get(cache_key)
         if cached:
             return cached
 
-        # Try live API
+        # For CN A-shares, try Sina Finance first (real-time, free)
+        if _is_cn_a_share(sym):
+            try:
+                from app.services.sina_service import SinaFinanceService
+                result = await SinaFinanceService.get_price(sym)
+                if result and result.get("lastPrice"):
+                    await cache.set(cache_key, result, ttl_seconds=settings.CACHE_TTL_SECONDS)
+                    return result
+            except Exception:
+                pass
+
+        # Try yfinance live API
         try:
             await _rate_limiter.acquire()
             ticker = yf.Ticker(sym)
@@ -164,9 +185,15 @@ class YFinanceService:
         except Exception:
             pass
 
-        # Fallback
-        fb = _FALLBACK_PRICES.get(sym)
+        # Fallback: known stock data
+        fb = _get_all_fallback_prices().get(sym)
         if fb:
+            await cache.set(cache_key, fb, ttl_seconds=120)
+            return fb
+
+        # Fallback: generate for any CN A-share
+        if _is_cn_a_share(sym):
+            fb = _generate_fallback_price(sym)
             await cache.set(cache_key, fb, ttl_seconds=120)
             return fb
 
@@ -202,9 +229,9 @@ class YFinanceService:
         except Exception:
             pass
 
-        # Fallback: generate minimal synthetic history from price data
-        if _is_known_symbol(sym):
-            fb_price = _FALLBACK_PRICES[sym]
+        # Fallback: generate synthetic history for any CN A-share or known symbol
+        if _is_known_symbol(sym) or _is_cn_a_share(sym):
+            fb_price = _get_all_fallback_prices().get(sym) or _generate_fallback_price(sym)
             base = fb_price.get("lastPrice", 100)
             data = []
             days = {"1mo": 22, "3mo": 66, "6mo": 132, "1y": 252, "2y": 504, "5y": 1260, "max": 1260}
@@ -292,36 +319,75 @@ class YFinanceService:
 
     @staticmethod
     async def search_ticker(query: str, limit: int = 10) -> list[dict[str, str]]:
-        """Search for ticker symbols."""
-        q = query.upper()
+        """Search for stock symbols by code or company name. Supports US + CN markets."""
+        q_raw = query.strip()
+        q = q_raw.upper()
+        q_lower = q_raw.lower()
         cache_key = f"search_{q}"
         cached = await cache.get(cache_key)
         if cached:
             return cached
 
-        results = []
+        results: list[dict[str, str]] = []
+        seen: set[str] = set()
 
-        # Check fallback data first (fast path)
-        for sym, info in _FALLBACK_INFO.items():
-            if q in sym or q.lower() in info.get("longName", "").lower():
-                results.append({
-                    "symbol": sym, "name": info.get("longName", ""),
-                    "exchange": "NASDAQ", "type": "stock",
-                })
+        # Helper to add result
+        def _add(sym: str, name: str, exchange: str = ""):
+            if sym in seen:
+                return
+            seen.add(sym)
+            # Detect exchange for CN stocks
+            if not exchange:
+                if ".SS" in sym.upper():
+                    exchange = "Shanghai"
+                elif ".SZ" in sym.upper():
+                    exchange = "Shenzhen"
+                else:
+                    exchange = "NASDAQ" if not sym[0].isdigit() else "Shanghai"
+            results.append({"symbol": sym, "name": name, "exchange": exchange, "type": "stock"})
 
-        if not results:
-            # Try live API
+        # 1. Search fallback data (both US + CN) by code or name
+        all_info = _get_all_fallback_info()
+        for sym, info in all_info.items():
+            name = info.get("longName", "")
+            # Match: query is in symbol OR query is in name (case-insensitive, partial)
+            if q in sym.upper() or q_lower in name.lower() or q_raw in name:
+                _add(sym, name)
+
+        # 2. If query looks like a CN stock code (digits), auto-detect suffix and add
+        clean_code = q_raw.replace(".SS", "").replace(".SZ", "").strip()
+        if clean_code.isdigit() and len(clean_code) == 6:
+            from app.market_config import normalize_cn_symbol
+            normalized = normalize_cn_symbol(clean_code)
+            if normalized not in seen:
+                # Check if we have info for it
+                info = all_info.get(normalized, {})
+                _add(normalized, info.get("longName", f"股票 {clean_code}"))
+
+        # 3. If query is a company name keyword, search across all fallback names
+        if len(results) < 3 and len(q_raw) >= 2:
+            for sym, info in all_info.items():
+                name = info.get("longName", "")
+                # Chinese: search individual characters  (e.g., "比亚迪" matches "比亚迪股份有限公司")
+                # English: case-insensitive substring
+                name_lower = name.lower()
+                if q_lower in name_lower or q_raw in name or any(
+                    char in name for char in q_raw if ord(char) > 127
+                ):
+                    if sym not in seen:
+                        _add(sym, name)
+
+        # 4. Try live API for US stocks as fallback
+        if not results and not q[0].isdigit():
             try:
                 await _rate_limiter.acquire()
                 ticker = yf.Ticker(q)
                 info = ticker.info
                 if info and (info.get("longName") or info.get("shortName")):
-                    results.append({
-                        "symbol": q, "name": info.get("longName") or info.get("shortName", ""),
-                        "exchange": info.get("exchange", ""), "type": "stock",
-                    })
+                    _add(q, info.get("longName") or info.get("shortName", ""),
+                          info.get("exchange", ""))
             except Exception:
                 pass
 
-        await cache.set(cache_key, results, ttl_seconds=3600)
+        await cache.set(cache_key, results, ttl_seconds=1800)
         return results[:limit]

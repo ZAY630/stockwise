@@ -8,6 +8,7 @@ Handles:
 """
 
 import asyncio
+import time
 from enum import Enum
 
 from anthropic import AsyncAnthropic
@@ -18,6 +19,9 @@ from app.agents.market_agent import MarketDataAgent
 from app.agents.news_agent import NewsAnalysisAgent
 from app.agents.prompts import ORCHESTRATOR_SYNTHESIS_PROMPT
 from app.config import settings
+
+# Simple in-memory analysis cache (TTL-based)
+_analysis_cache: dict[str, tuple[float, dict]] = {}
 
 
 class OrchestrationMode(Enum):
@@ -44,69 +48,64 @@ class MultiAgentOrchestrator:
     ) -> dict:
         """Main entry point — route query and execute appropriate agent(s).
 
-        Args:
-            query: User's question or request.
-            symbol: Optional stock ticker for context.
-            mode: Override the auto-detected orchestration mode.
-            force_agent: Force routing to "financial", "news", or "market".
-
-        Returns:
-            Dict with mode, agent name(s), and analysis result(s).
+        Results are cached by (symbol, mode, force_agent) for 10 minutes.
         """
+        # Check cache first (query hash prevents collision between different questions)
+        import hashlib
+        query_hash = hashlib.md5(query.encode()).hexdigest()[:8]
+        cache_key = f"{symbol or 'no_symbol'}:{mode.value if mode else 'auto'}:{force_agent or 'none'}:{query_hash}"
+        now = time.time()
+        if cache_key in _analysis_cache:
+            expiry, cached_result = _analysis_cache[cache_key]
+            if now < expiry:
+                return cached_result
+
         ctx = AgentContext(symbol=symbol.upper() if symbol else None, user_query=query)
+        result: dict
 
         # Force a specific agent
         if force_agent:
             agent = {"financial": self.financial, "news": self.news, "market": self.market}[force_agent]
-            result = await agent.analyze(ctx)
-            return {"mode": "single", "agent": agent.name, "result": result}
+            analysis = await agent.analyze(ctx)
+            result = {"mode": "single", "agent": agent.name, "result": analysis}
+        else:
+            # Auto-detect mode
+            if mode is None:
+                mode = self._classify_query(query)
 
-        # Auto-detect mode
-        if mode is None:
-            mode = self._classify_query(query)
+            if mode == OrchestrationMode.SINGLE:
+                agent = self._select_agent(query)
+                analysis = await agent.analyze(ctx)
+                result = {"mode": "single", "agent": agent.name, "result": analysis}
 
-        if mode == OrchestrationMode.SINGLE:
-            agent = self._select_agent(query)
-            result = await agent.analyze(ctx)
-            return {"mode": "single", "agent": agent.name, "result": result}
+            elif mode == OrchestrationMode.PARALLEL:
+                results = await asyncio.gather(
+                    self.financial.analyze(ctx),
+                    self.news.analyze(ctx),
+                    self.market.analyze(ctx),
+                )
+                ctx.news_sentiment = results[1]
+                ctx.financial_summary = results[0]
+                ctx.market_data = results[2]
+                synthesis = await self._synthesize(ctx, results)
+                result = {"mode": "parallel", "results": results, "synthesis": synthesis}
 
-        elif mode == OrchestrationMode.PARALLEL:
-            results = await asyncio.gather(
-                self.financial.analyze(ctx),
-                self.news.analyze(ctx),
-                self.market.analyze(ctx),
-            )
-            # Update context with results
-            ctx.news_sentiment = results[1]
-            ctx.financial_summary = results[0]
-            ctx.market_data = results[2]
-            synthesis = await self._synthesize(ctx, results)
-            return {
-                "mode": "parallel",
-                "results": results,
-                "synthesis": synthesis,
-            }
+            elif mode == OrchestrationMode.SEQUENTIAL:
+                news_result = await self.news.analyze(ctx)
+                ctx.news_sentiment = news_result
+                financial_result = await self.financial.analyze(ctx)
+                ctx.financial_summary = financial_result
+                market_result = await self.market.analyze(ctx)
+                ctx.market_data = market_result
+                results = [news_result, financial_result, market_result]
+                synthesis = await self._synthesize(ctx, results)
+                result = {"mode": "sequential", "results": results, "synthesis": synthesis}
+            else:
+                result = {"mode": "unknown", "result": "Could not classify query"}
 
-        elif mode == OrchestrationMode.SEQUENTIAL:
-            # News → Financial → Market (each feeds the next)
-            news_result = await self.news.analyze(ctx)
-            ctx.news_sentiment = news_result
-
-            financial_result = await self.financial.analyze(ctx)
-            ctx.financial_summary = financial_result
-
-            market_result = await self.market.analyze(ctx)
-            ctx.market_data = market_result
-
-            results = [news_result, financial_result, market_result]
-            synthesis = await self._synthesize(ctx, results)
-            return {
-                "mode": "sequential",
-                "results": results,
-                "synthesis": synthesis,
-            }
-
-        return {"mode": "unknown", "result": "Could not classify query"}
+        # Cache for 10 minutes
+        _analysis_cache[cache_key] = (now + 600, result)
+        return result
 
     def _classify_query(self, query: str) -> OrchestrationMode:
         """Classify whether a query needs a single agent or multi-agent analysis."""

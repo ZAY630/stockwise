@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./stockwise.db"
     CACHE_TTL_SECONDS: int = 300
 
+    # Deployment
+    ENVIRONMENT: str = "development"  # "development" or "production"
+
     # Rate limiting
     YFINANCE_RATE_LIMIT: float = 2.0
     SEC_EDGAR_RATE_LIMIT: float = 0.1
